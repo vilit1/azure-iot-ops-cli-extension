@@ -650,6 +650,57 @@ class NamespaceAssets(Queryable):
         )
         return _get_sub_property(asset, dataset_name, property_key="datasets")["dataPoints"]
 
+    def move_dataset_datapoints(
+        self,
+        asset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        original_dataset_name: str,
+        destination_dataset_name: str,
+        datapoint_names: List[str],
+        replace: bool = False,
+        **kwargs
+    ) -> dict:
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group,
+            check_cluster=True
+        )
+
+        namespace = parse_resource_id(asset["id"])
+        _move_sub_props(
+            asset=asset,
+            parent_key="datasets",
+            original_parent_name=original_dataset_name,
+            destination_parent_name=destination_dataset_name,
+            child_names=datapoint_names,
+            replace=replace
+        )
+
+        update_payload = {
+            "properties": {
+                "datasets": asset["properties"]["datasets"]
+            }
+        }
+        with console.status(
+            f"Moving datapoints from dataset {original_dataset_name} to {destination_dataset_name} in asset "
+            f"{asset_name}..."
+        ):
+            poller = self.ops.begin_update(
+                resource_group_name=namespace["resource_group"],
+                namespace_name=namespace["name"],
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            wait_for_terminal_state(poller, **kwargs)
+            asset = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace["name"],
+                resource_group=namespace["resource_group"],
+            )
+            return asset["properties"]["datasets"]
+
     def remove_dataset_datapoint(
         self,
         asset_name: str,
@@ -969,6 +1020,57 @@ class NamespaceAssets(Queryable):
             group_name=group_name
         )
         return event.get("events", [])
+
+    def move_event_group_events(
+        self,
+        asset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        original_group_name: str,
+        destination_group_name: str,
+        event_names: List[str],
+        replace: bool = False,
+        **kwargs
+    ) -> dict:
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group,
+            check_cluster=True
+        )
+
+        namespace = parse_resource_id(asset["id"])
+        _move_sub_props(
+            asset=asset,
+            parent_key="eventGroups",
+            original_parent_name=original_group_name,
+            destination_parent_name=destination_group_name,
+            child_names=event_names,
+            replace=replace
+        )
+
+        update_payload = {
+            "properties": {
+                "events": asset["properties"]["events"]
+            }
+        }
+        with console.status(
+            f"Moving events from event group {original_group_name} to {destination_group_name} in asset "
+            f"{asset_name}..."
+        ):
+            poller = self.ops.begin_update(
+                resource_group_name=namespace["resource_group"],
+                namespace_name=namespace["name"],
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            wait_for_terminal_state(poller, **kwargs)
+            asset = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace["name"],
+                resource_group=namespace["resource_group"],
+            )
+            return asset["properties"]["events"]
 
     def remove_event_group_event(
         self,
@@ -1493,6 +1595,57 @@ class NamespaceAssets(Queryable):
         mgmt_group = _get_sub_property(asset, group_name, property_key="managementGroups")
         return mgmt_group.get("actions", [])
 
+    def move_management_group_actions(
+        self,
+        asset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        original_group_name: str,
+        destination_group_name: str,
+        action_names: List[str],
+        replace: bool = False,
+        **kwargs
+    ) -> dict:
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group,
+            check_cluster=True
+        )
+
+        namespace = parse_resource_id(asset["id"])
+        _move_sub_props(
+            asset=asset,
+            parent_key="managementGroups",
+            original_parent_name=original_group_name,
+            destination_parent_name=destination_group_name,
+            child_names=action_names,
+            replace=replace
+        )
+
+        update_payload = {
+            "properties": {
+                "managementGroups": asset["properties"]["managementGroups"]
+            }
+        }
+        with console.status(
+            f"Moving actions from management group {original_group_name} to {destination_group_name} in asset "
+            f"{asset_name}..."
+        ):
+            poller = self.ops.begin_update(
+                resource_group_name=namespace["resource_group"],
+                namespace_name=namespace["name"],
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            wait_for_terminal_state(poller, **kwargs)
+            asset = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace["name"],
+                resource_group=namespace["resource_group"],
+            )
+            return asset["properties"]["managementGroups"]
+
     def remove_management_group_action(
         self,
         asset_name: str,
@@ -1830,6 +1983,99 @@ def _get_sub_property(asset: dict, name: str, property_key: str) -> dict:
             property_name = property_name[:-5] + " group"
         raise InvalidArgumentValueError(f"{property_name} '{name}' not found in asset '{asset['name']}'.")
     return matched_props[0]
+
+
+def _move_sub_props(
+    asset: dict,
+    parent_key: str,
+    original_parent_name: str,
+    destination_parent_name: str,
+    child_names: Optional[List[str]] = None,
+    replace: bool = False
+):
+    """
+    Transfers sub properties from one parent property to another.
+
+    Transfers datapoints from one dataset to another, events from one event group to another,
+    or actions from one management group to another.
+
+    Errors will be raised if:
+    - the original or new parent property is not found
+    - any of the (found) child properties to transfer already exist in the new parent property and replace is False
+
+    Warning will be logged if any of the child properties to transfer are not found.
+
+    asset: dict representing the asset to modify
+    parent_key: str representing the parent key to modify (datasets, eventGroups, managementGroups)
+    original_parent_name: str representing the name of the parent property to transfer from
+    destination_parent_name: str representing the name of the parent property to transfer to
+    child_names: list of str representing the names of the child properties to transfer
+        (if contains "*", all child properties will be transferred)
+    replace: bool representing whether to replace existing child properties in the new parent property
+        (if False, will raise an error if any child properties already exist in the new parent property)
+    """
+    parent_to_child_map = {
+        "datasets": "dataPoints",
+        "eventGroups": "events",
+        "managementGroups": "actions"
+    }
+    child_key = parent_to_child_map[parent_key]
+
+    parent_prop_map = {
+        p["name"]: p for p in asset["properties"].get(parent_key, [])
+    }
+    if original_parent_name not in parent_prop_map:
+        raise InvalidArgumentValueError(
+            f"Could not find {original_parent_name} in asset {asset['name']}."
+        )
+    elif destination_parent_name not in parent_prop_map:
+        raise InvalidArgumentValueError(
+            f"Could not find {destination_parent_name} in asset {asset['name']}."
+        )
+
+    original_parent_prop = parent_prop_map[original_parent_name]
+    new_parent_prop = parent_prop_map[destination_parent_name]
+    new_parent_prop.setdefault(child_key, [])
+
+    if "*" in child_names:
+        if len(child_names) > 1:
+            logger.info("Since there is a '*', all child properties will be transferred.")
+        # transfer all
+        props_to_transfer = original_parent_prop.get(child_key, [])
+        original_parent_prop[child_key] = []
+        new_parent_prop[child_key].extend(props_to_transfer)
+        return
+
+    # transfer set
+    # use maps for easier lookup by name
+    original_child_prop_map = {
+        c["name"]: c for c in original_parent_prop.get(child_key, [])
+    }
+    not_found = [c for c in child_names if c not in original_child_prop_map]
+    if not_found:
+        logger.warning(
+            f"Could not find {', '.join(not_found)} in asset {asset['name']}."
+        )
+
+    new_child_prop_list = new_parent_prop.get(child_key, [])
+    # remove all existing child props that are being moved (make sure to not remove ones not found)
+    unmatched_child_prop_list = [
+        c for c in new_child_prop_list if (
+            c["name"] not in child_names and c["name"] not in not_found)
+    ]
+    if len(unmatched_child_prop_list) < len(new_child_prop_list) and not replace:
+        names_to_replace = [
+            c["name"] for c in new_child_prop_list if c["name"] in child_names
+        ]
+        raise InvalidArgumentValueError(
+            f"The properties {', '.join(names_to_replace)} already exist in {destination_parent_name}. "
+            "Use --replace to overwrite them."
+        )
+
+    unmatched_child_prop_list.extend(
+        [original_child_prop_map[c] for c in child_names if c in original_child_prop_map]
+    )
+    new_parent_prop[child_key] = unmatched_child_prop_list
 
 
 def _process_configs(

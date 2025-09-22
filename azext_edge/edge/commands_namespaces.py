@@ -1380,6 +1380,29 @@ def list_namespace_asset_dataset_points(
     )
 
 
+def move_namespace_asset_dataset_points(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    original_dataset_name: str,
+    destination_dataset_name: str,
+    datapoint_names: List[str],
+    replace: bool = False,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).move_dataset_datapoints(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        original_dataset_name=original_dataset_name,
+        destination_dataset_name=destination_dataset_name,
+        datapoint_names=datapoint_names,
+        replace=replace,
+        **kwargs
+    )
+
+
 def remove_namespace_asset_dataset_point(
     cmd,
     asset_name: str,
@@ -1671,6 +1694,29 @@ def list_namespace_asset_event_group_events(
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
         group_name=group_name
+    )
+
+
+def move_namespace_asset_event_group_events(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    original_group_name: str,
+    destination_group_name: str,
+    event_names: List[str],
+    replace: bool = False,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).move_event_group_events(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        original_group_name=original_group_name,
+        destination_group_name=destination_group_name,
+        event_names=event_names,
+        replace=replace,
+        **kwargs
     )
 
 
@@ -2203,6 +2249,29 @@ def list_namespace_asset_management_group_actions(
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
         group_name=group_name
+    )
+
+
+def move_namespace_asset_management_group_actions(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    original_group_name: str,
+    destination_group_name: str,
+    action_names: List[str],
+    replace: bool = False,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).move_management_group_actions(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        original_group_name=original_group_name,
+        destination_group_name=destination_group_name,
+        action_names=action_names,
+        replace=replace,
+        **kwargs
     )
 
 
