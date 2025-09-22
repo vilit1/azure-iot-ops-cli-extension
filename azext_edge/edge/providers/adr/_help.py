@@ -1096,6 +1096,31 @@ def load_iotops_adr_help():
     """
 
     helps[
+        "iot ops ns asset custom datapoint move"
+    ] = """
+        type: command
+        short-summary: Move datapoints between custom asset datasets in a Device Registry namespace.
+
+        examples:
+        - name: Move all datapoints from one dataset to another
+          text: >
+            az iot ops ns asset custom datapoint move --asset mycustomasset --instance myInstance
+            -g myInstanceResourceGroup --dataset myOriginalDataset --dp * --target-dataset myTargetDataset
+
+        - name: Move two specific datapoints from one dataset to another
+          text: >
+            az iot ops ns asset custom datapoint move --asset mycustomasset --instance myInstance
+            -g myInstanceResourceGroup --dataset myOriginalDataset --dp myDataPoint1 myDataPoint2
+            --target-dataset myTargetDataset
+
+        - name: Move all datapoints and replace existing ones with same names
+          text: >
+            az iot ops ns asset custom datapoint move --asset mycustomasset --instance myInstance
+            -g myInstanceResourceGroup --dataset myOriginalDataset --dp * --target-dataset myTargetDataset
+            --replace
+    """
+
+    helps[
         "iot ops ns asset custom datapoint remove"
     ] = """
         type: command
@@ -1235,6 +1260,31 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns asset custom event list --asset mycustomasset --instance myInstance
             -g myInstanceResourceGroup --event-group alarmGroup
+    """
+
+    helps[
+        "iot ops ns asset custom event move"
+    ] = """
+        type: command
+        short-summary: Move events between custom asset event groups in a Device Registry namespace.
+
+        examples:
+        - name: All events from one event group to another
+          text: >
+            az iot ops ns asset custom event move --asset mycustomasset --instance myInstance
+            -g myInstanceResourceGroup --event-group alarmGroup --ev * --target-event-group newAlarmGroup
+
+        - name: Move two specific events from one event group to another
+          text: >
+            az iot ops ns asset custom event move --asset mycustomasset --instance myInstance
+            -g myInstanceResourceGroup --event-group alarmGroup --ev myEvent1 myEvent2
+            --target-event-group newAlarmGroup
+
+        - name: All events from one event group to another and replace existing ones with same names
+          text: >
+            az iot ops ns asset custom event move --asset mycustomasset --instance myInstance
+            -g myInstanceResourceGroup --event-group alarmGroup --ev * --target-event-group newAlarmGroup
+            --replace
     """
 
     helps[
@@ -1494,6 +1544,29 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns asset custom mgmt-action list --asset myasset --instance myInstance -g myInstanceResourceGroup
             --group myManagementGroup
+    """
+
+    helps[
+        "iot ops ns asset custom mgmt-action move"
+    ] = """
+        type: command
+        short-summary: Move actions between custom asset management groups.
+
+        examples:
+        - name: Move all actions from one management group to another.
+          text: >
+            az iot ops ns asset custom mgmt-action move --asset myasset --instance myInstance -g myInstanceResourceGroup
+            --group myManagementGroup --target-group newManagementGroup --action *
+
+        - name: Move two specific actions from one management group to another.
+          text: >
+            az iot ops ns asset custom mgmt-action move --asset myasset --instance myInstance -g myInstanceResourceGroup
+            --group myManagementGroup --target-group newManagementGroup --action myAction1 myAction2
+
+        - name: Move all actions and replace existing ones with same names.
+          text: >
+            az iot ops ns asset custom mgmt-action move --asset myasset --instance myInstance -g myInstanceResourceGroup
+            --group myManagementGroup --target-group newManagementGroup --action * --replace
     """
 
     helps[
@@ -2207,6 +2280,31 @@ def load_iotops_adr_help():
     """
 
     helps[
+        "iot ops ns asset opcua datapoint move"
+    ] = """
+        type: command
+        short-summary: Move datapoints between OPC UA asset datasets in a Device Registry namespace.
+
+        examples:
+        - name: Move all datapoints from one dataset to another
+          text: >
+            az iot ops ns asset opcua datapoint move --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup --dataset myOriginalDataset --dp * --target-dataset myTargetDataset
+
+        - name: Move two specific datapoints from one dataset to another
+          text: >
+            az iot ops ns asset opcua datapoint move --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup --dataset myOriginalDataset --dp myDataPoint1 myDataPoint2
+            --target-dataset myTargetDataset
+
+        - name: Move all datapoints and replace existing ones with same names
+          text: >
+            az iot ops ns asset opcua datapoint move --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup --dataset myOriginalDataset --dp * --target-dataset myTargetDataset
+            --replace
+    """
+
+    helps[
         "iot ops ns asset opcua datapoint remove"
     ] = """
         type: command
@@ -2457,6 +2555,29 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns asset opcua mgmt-action list --asset myopcuaasset --instance myInstance -g myInstanceResourceGroup
             --group myManagementGroup
+    """
+
+    helps[
+        "iot ops ns asset opcua mgmt-action move"
+    ] = """
+        type: command
+        short-summary: Move actions between OPC UA asset management groups.
+
+        examples:
+        - name: Move all actions from one management group to another.
+          text: >
+            az iot ops ns asset opcua mgmt-action move --asset myopcuaasset --instance myInstance -g myInstanceResourceGroup
+            --group myManagementGroup --target-group newManagementGroup --action *
+
+        - name: Move two specific actions from one management group to another.
+          text: >
+            az iot ops ns asset opcua mgmt-action move --asset myopcuaasset --instance myInstance -g myInstanceResourceGroup
+            --group myManagementGroup --target-group newManagementGroup --action myAction1 myAction2
+
+        - name: Move all actions and replace existing ones with same names.
+          text: >
+            az iot ops ns asset opcua mgmt-action move --asset myopcuaasset --instance myInstance -g myInstanceResourceGroup
+            --group myManagementGroup --target-group newManagementGroup --action * --replace
     """
 
     helps[

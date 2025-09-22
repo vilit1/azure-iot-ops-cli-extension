@@ -1361,6 +1361,30 @@ def load_adr_arguments(self, _):
                 arg_type=get_three_state_flag(),
             )
 
+        with self.argument_context(f"iot ops ns asset {asset_type} datapoint move") as context:
+            context.argument(
+                "original_dataset_name",
+                options_list=["--dataset", "-d"],
+                help="Current dataset name with data points.",
+            )
+            context.argument(
+                "destination_dataset_name",
+                options_list=["--target-dataset", "--td"],
+                help="Target dataset name to transfer the data points to.",
+            )
+            context.argument(
+                "datapoint_names",
+                options_list=["--datapoint", "--dp"],
+                help="Space-separated list of data point names to move. Use '*' to move all data points.",
+            )
+            context.argument(
+                "replace",
+                options_list=["--replace"],
+                help="For all data points, replace the data points if another point with the same name is already "
+                "present.",
+                arg_type=get_three_state_flag(),
+            )
+
         with self.argument_context(f"iot ops ns asset {asset_type} event-group") as context:
             context.argument(
                 "asset_name",
@@ -1392,8 +1416,9 @@ def load_adr_arguments(self, _):
             )
             context.argument(
                 "group_name",
+                # TODO: align with mgmt group - only uses group
                 options_list=["--event-group", "--eg"],
-                help="Event name.",
+                help="Event group name.",
             )
             context.argument(
                 "event_name",
@@ -1409,6 +1434,30 @@ def load_adr_arguments(self, _):
                 "replace",
                 options_list=["--replace"],
                 help="Replace the event if another event with the same name is already present.",
+                arg_type=get_three_state_flag(),
+            )
+
+        with self.argument_context(f"iot ops ns asset {asset_type} event move") as context:
+            context.argument(
+                "original_group_name",
+                options_list=["--event-group", "--eg"],
+                help="Current event group name with events.",
+            )
+            context.argument(
+                "destination_group_name",
+                options_list=["--target-group", "--tg"],
+                help="Target event group name to transfer the events to.",
+            )
+            context.argument(
+                "event_names",
+                options_list=["--event", "--ev"],
+                help="Space-separated list of event names to move. Use '*' to move all events.",
+            )
+            context.argument(
+                "replace",
+                options_list=["--replace"],
+                help="For all events, replace the event if another event with the same name is already "
+                "present.",
                 arg_type=get_three_state_flag(),
             )
 
@@ -1509,6 +1558,30 @@ def load_adr_arguments(self, _):
                 "replace",
                 options_list=["--replace"],
                 help="Replace the action if another action with the same name is already present.",
+                arg_type=get_three_state_flag(),
+            )
+
+        with self.argument_context(f"iot ops ns asset {asset_type} mgmt-action move") as context:
+            context.argument(
+                "original_group_name",
+                options_list=["--group"],
+                help="Current management group name with actions.",
+            )
+            context.argument(
+                "destination_group_name",
+                options_list=["--target-group", "--tg"],
+                help="Target management group name to transfer the actions to.",
+            )
+            context.argument(
+                "action_names",
+                options_list=["--action", "--ac"],
+                help="Space-separated list of action names to move. Use '*' to move all actions.",
+            )
+            context.argument(
+                "replace",
+                options_list=["--replace"],
+                help="For all actions, replace the action if another action with the same name is already "
+                "present.",
                 arg_type=get_three_state_flag(),
             )
 

@@ -20,6 +20,7 @@ from azext_edge.edge.providers.adr.namespace_assets import (
     _create_datapoint,
     _get_sub_property,
     _create_event,
+    _move_sub_props,
     _process_configs,
     _process_opcua_dataset_configurations_v1,
     _process_opcua_event_configurations_v1,
@@ -170,6 +171,68 @@ def test_get_sub_property_error(property_key):
     property_name = name_map[property_key]
     expected_msg = f"{property_name} '{name}' not found in asset '{asset['name']}'."
     assert expected_msg in str(ex.value)
+
+@pytest.mark.parametrize("test_case", [
+    # Test case 1: Move a single child successfully
+    {
+        "asset_properties": {
+            "parentKey": [
+                {"name": "dataset1", "childKey": [{"name": "child1", "data": "data1"}]},
+                {"name": "dataset2", "childKey": []},
+                {"name": "dataset3", "childKey": []}
+            ]
+        },
+        "original_parent_name": "dataset1",
+        "destination_parent_name": "dataset2",
+        "child_names": ["child1"],
+        "replace": False,
+        "expected": {
+            "parentKey": [
+                {"name": "dataset1", "childKey": []},
+                {"name": "dataset2", "childKey": [{"name": "child1", "data": "data1"}]},
+                {"name": "dataset3", "childKey": []}
+            ]
+        }
+    },
+    # Test case 2: Move all children using wildcard
+    {
+        "asset": {
+            "name": "testAsset",
+            "properties": {
+                "eventGroups": [
+                    {"name": "group1", "events": [{"name": "event1"}, {"name": "event2"}]},
+                    {"name": "group2", "events": []}
+                ]
+            }
+        },
+        "original_parent_name": "group1",
+        "destination_parent_name": "group2",
+        "child_names": ["*"],  # Wildcard
+        "replace": False,
+        "expected": {
+            "eventGroups": [
+                {"name": "group1", "events": []},
+                {"name": "group2", "events": [{"name": "event1"}, {"name": "event2"}]}
+            ]
+        }
+    }
+])
+@pytest.mark.parametrize("parent_key, child_key", [
+    ("datasets", "dataPoints"),
+    ("eventGroups", "events"),
+    ("managementGroups", "actions")
+])
+def test_move_sub_props_success(test_case):
+    asset = test_case["asset"]
+    _move_sub_props(
+        asset,
+        parent_key=test_case["parent_key"],
+        original_parent_name=test_case["original_parent_name"],
+        destination_parent_name=test_case["destination_parent_name"],
+        child_names=test_case["child_names"],
+        replace=test_case["replace"]
+    )
+    assert asset["properties"] == test_case["expected"]
 
 
 @pytest.mark.parametrize("test_case", [
