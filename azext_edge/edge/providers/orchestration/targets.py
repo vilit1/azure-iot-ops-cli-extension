@@ -222,6 +222,8 @@ class InitTargets:
                 template.content["variables"][var_attr.template_key][var_attr.moniker] = var_attr.value
 
         if self.user_trust:
+            template.content["variables"]["VERSIONS"].pop("platform", None)
+            template.content["variables"]["TRAINS"].pop("platform", None)
             # patch enablement template expecting full trust settings for source: CustomerManaged
             template.get_type_definition("_1.CustomerManaged")["properties"]["settings"]["nullable"] = True
         return template.content, parameters
