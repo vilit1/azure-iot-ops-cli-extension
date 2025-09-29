@@ -2061,7 +2061,8 @@ def _move_sub_props(
     # remove all existing child props that are being moved (make sure to not remove ones not found)
     unmatched_child_prop_list = [
         c for c in new_child_prop_list if (
-            c["name"] not in child_names and c["name"] not in not_found)
+            c["name"] not in child_names or c["name"] in not_found
+        )
     ]
     if len(unmatched_child_prop_list) < len(new_child_prop_list) and not replace:
         names_to_replace = [
@@ -2076,6 +2077,12 @@ def _move_sub_props(
         [original_child_prop_map[c] for c in child_names if c in original_child_prop_map]
     )
     new_parent_prop[child_key] = unmatched_child_prop_list
+
+    # remove the transferred child props from the original parent prop
+    original_parent_prop[child_key] = [
+        c for c in original_parent_prop.get(child_key, [])
+        if c["name"] not in child_names
+    ]
 
 
 def _process_configs(

@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from copy import deepcopy
 from random import choice
 from typing import Callable, List, Optional
 import json
@@ -199,8 +200,8 @@ def test_get_sub_property_error(property_key):
     {
         "asset_properties": {
             "parentKey": [
-                {"name": "group1", "events": [{"name": "event1"}, {"name": "event2"}]},
-                {"name": "group2", "events": []}
+                {"name": "group1", "childKey": [{"name": "event1"}, {"name": "event2"}]},
+                {"name": "group2", "childKey": []}
             ]
         },
         "original_parent_name": "group1",
@@ -209,8 +210,8 @@ def test_get_sub_property_error(property_key):
         "replace": False,
         "expected": {
             "parentKey": [
-                {"name": "group1", "events": []},
-                {"name": "group2", "events": [{"name": "event1"}, {"name": "event2"}]}
+                {"name": "group1", "childKey": []},
+                {"name": "group2", "childKey": [{"name": "event1"}, {"name": "event2"}]}
             ]
         }
     },
@@ -279,19 +280,84 @@ def test_get_sub_property_error(property_key):
             ]
         }
     },
+    # Test case 5: Child does not exist in original parent
+    {
+        "asset_properties": {
+            "parentKey": [
+                {"name": "dataset1", "childKey": [
+                    {"name": "child1", "data": "data1"}
+                ]},
+                {"name": "dataset2", "childKey": [
+                    {"name": "child1", "data": "data5"},
+                    {"name": "child2", "data": "data6"}
+                ]},
+            ]
+        },
+        "original_parent_name": "dataset1",
+        "destination_parent_name": "dataset2",
+        "child_names": ["child2"],
+        "replace": True,
+        "expected": {
+            "parentKey": [
+                {"name": "dataset1", "childKey": [
+                    {"name": "child1", "data": "data1"}
+                ]},
+                {"name": "dataset2", "childKey": [
+                    {"name": "child1", "data": "data5"},
+                    {"name": "child2", "data": "data6"}
+                ]},
+            ]
+        }
+    },
+    # Test case 6: Move all children using wildcard + name
+    {
+        "asset_properties": {
+            "parentKey": [
+                {"name": "group1", "childKey": [{"name": "event1"}, {"name": "event2"}]},
+                {"name": "group2", "childKey": []}
+            ]
+        },
+        "original_parent_name": "group1",
+        "destination_parent_name": "group2",
+        "child_names": ["*", "event1"],
+        "replace": False,
+        "expected": {
+            "parentKey": [
+                {"name": "group1", "childKey": []},
+                {"name": "group2", "childKey": [{"name": "event1"}, {"name": "event2"}]}
+            ]
+        }
+    },
 ])
 @pytest.mark.parametrize("parent_key, child_key", [
     ("datasets", "dataPoints"),
     ("eventGroups", "events"),
     ("managementGroups", "actions")
 ])
-def test_move_sub_props_success(test_case, parent_key, child_key):
+def test_move_sub_props_success(mocker, test_case: dict, parent_key: str, child_key: str):
+    # mock logger
+    logger = mocker.patch("azext_edge.edge.providers.adr.namespace_assets.logger")
+
     # convert to a workable asset structure
-    asset_properties = test_case["asset_properties"]
+    asset_properties = deepcopy(test_case["asset_properties"])
     asset_properties[parent_key] = asset_properties.pop("parentKey")
     for child in asset_properties[parent_key]:
         child[child_key] = child.pop("childKey")
-    asset = {"properties": test_case["asset_properties"]}
+    asset = {
+        "name": "testAsset",
+        "properties": asset_properties
+    }
+
+    # determine which child names do not exist in the original parent (for logger warning check)
+    parent_map = {par["name"]: par for par in asset["properties"][parent_key]}
+    original_names = [c["name"] for c in parent_map[test_case["original_parent_name"]].get(child_key, [])]
+    not_found = [name for name in test_case["child_names"] if name != "*" and name not in original_names]
+
+    # update the expected structure for easier checking
+    expected = deepcopy(test_case["expected"])
+    expected[parent_key] = expected.pop("parentKey")
+    for child in expected[parent_key]:
+        child[child_key] = child.pop("childKey")
 
     _move_sub_props(
         asset,
@@ -301,7 +367,102 @@ def test_move_sub_props_success(test_case, parent_key, child_key):
         child_names=test_case["child_names"],
         replace=test_case["replace"]
     )
-    assert asset["properties"] == test_case["expected"]
+    assert asset["properties"] == expected
+
+    if "*" in test_case["child_names"] and len(test_case["child_names"]) > 1:
+        logger.info.assert_called_once()
+        assert "Since there is a '*', all child properties will be transferred." in logger.info.call_args[0][0]
+
+    if not_found:
+        logger.warning.assert_called_once()
+    else:
+        logger.warning.assert_not_called()
+
+
+@pytest.mark.parametrize("parent_key, child_key", [
+    ("datasets", "dataPoints"),
+    ("eventGroups", "events"),
+    ("managementGroups", "actions")
+])
+def test_move_sub_props_error(parent_key: str, child_key: str):
+    asset = {
+        "name": "testAsset",
+        "properties": {
+            parent_key: [
+                {"name": "parent1", child_key: [
+                    {"name": "child1"}, {"name": "child2"}, {"name": "child3"}, {"name": "child4"}
+                ]},
+                {"name": "parent2", child_key: [
+                    {"name": "child1"}, {"name": "child2"}, {"name": "child5"}
+                ]}
+            ]
+        }
+    }
+    # Original parent not found
+    fake_name = "nonexistent"
+    with pytest.raises(InvalidArgumentValueError) as ex:
+        _move_sub_props(
+            asset,
+            parent_key=parent_key,
+            original_parent_name=fake_name,
+            destination_parent_name="parent2",
+            child_names=["child1"],
+            replace=False
+        )
+    assert f"Could not find {fake_name} in asset {asset['name']}" in str(ex.value)
+
+    # Destination parent not found
+    with pytest.raises(InvalidArgumentValueError) as ex:
+        _move_sub_props(
+            asset,
+            parent_key=parent_key,
+            original_parent_name="parent1",
+            destination_parent_name=fake_name,
+            child_names=["child1"],
+            replace=False
+        )
+    assert f"Could not find {fake_name} in asset {asset['name']}" in str(ex.value)
+
+    # replace is False and child already exists in destination
+    # basic case - two children exist in both
+    names_to_replace = ["child1", "child2"]
+    with pytest.raises(InvalidArgumentValueError) as ex:
+        _move_sub_props(
+            asset,
+            parent_key=parent_key,
+            original_parent_name="parent1",
+            destination_parent_name="parent2",
+            child_names=names_to_replace,
+            replace=False
+        )
+    assert f"The properties {', '.join(names_to_replace)} already exist in " in str(ex.value)
+
+    # TODO: not be mentioned?
+    # child exists in destination only - should be mentioned
+    names_to_replace = ["child1", "child5"]
+    with pytest.raises(InvalidArgumentValueError) as ex:
+        _move_sub_props(
+            asset,
+            parent_key=parent_key,
+            original_parent_name="parent1",
+            destination_parent_name="parent2",
+            child_names=names_to_replace,
+            replace=False
+        )
+    assert f"The properties {', '.join(names_to_replace)} already exist in " in str(ex.value)
+
+    # child exists in original only - should not be mentioned
+    names_to_replace = ["child1", "child3"]
+    with pytest.raises(InvalidArgumentValueError) as ex:
+        _move_sub_props(
+            asset,
+            parent_key=parent_key,
+            original_parent_name="parent1",
+            destination_parent_name="parent2",
+            child_names=names_to_replace,
+            replace=False
+        )
+    assert "The properties child1 already exist in " in str(ex.value)
 
 
 @pytest.mark.parametrize("test_case", [
